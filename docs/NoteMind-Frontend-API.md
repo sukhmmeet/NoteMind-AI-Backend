@@ -121,6 +121,27 @@ for non-auth endpoints.
 
 ---
 
+## Dashboard endpoint
+
+### `GET /dashboard`
+
+Returns the authenticated user's username, totals for notes, folders,
+flashcards, and generated quizzes, plus the four most recently updated notes.
+All values are scoped to the authenticated user.
+
+### Response shape
+
+```json
+{
+  "username": "john_doe",
+  "totalNotes": 8,
+  "totalFolders": 3,
+  "totalFlashcards": 12,
+  "totalQuizzes": 2,
+  "recentNotes": []
+}
+```
+
 ## 3) Notes endpoints
 
 ### 3.1 Endpoints

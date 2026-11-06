@@ -9,6 +9,8 @@ import java.util.Optional;
 
 @Repository
 public interface FolderRepository extends JpaRepository<Folder, Long> {
+    long countByUserId(Long userId);
+
     Optional<Folder> findByName(String name);
 
     List<Folder> findAllByUserId(Long id);

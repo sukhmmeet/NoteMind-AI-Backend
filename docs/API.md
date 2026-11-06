@@ -39,6 +39,7 @@ wrapper with `success: false` and an error `message`.
 | POST | `/auth/login` | No | 200 | Authenticate a user |
 | POST | `/auth/refresh-token` | No | 200 | Exchange a refresh token |
 | POST | `/auth/logout` | No | 200 | Revoke a refresh token |
+| GET | `/dashboard` | Yes | 200 | Get the current user's dashboard summary |
 | POST | `/notes` | Yes | 200 | Create a note |
 | GET | `/notes` | Yes | 200 | List notes with pagination |
 | GET | `/notes/{id}` | Yes | 200 | Get one note |
@@ -60,6 +61,28 @@ wrapper with `success: false` and an error `message`.
 | GET | `/folder/{id}` | Yes | 200 | Get one folder |
 | PATCH | `/folder/{id}` | Yes | 200 | Update a folder |
 | DELETE | `/folder/{id}` | Yes | 200 | Delete a folder |
+
+### `GET /dashboard`
+
+Returns the authenticated user's username, totals for notes, folders,
+flashcards, and generated quizzes, plus the four most recently updated notes.
+Quiz totals count successful quiz-generation requests made after quiz tracking
+was introduced; previously generated quizzes were not persisted.
+
+```json
+{
+  "success": true,
+  "message": "Success",
+  "data": {
+    "username": "john_doe",
+    "totalNotes": 8,
+    "totalFolders": 3,
+    "totalFlashcards": 12,
+    "totalQuizzes": 2,
+    "recentNotes": []
+  }
+}
+```
 
 ## Common data models
 

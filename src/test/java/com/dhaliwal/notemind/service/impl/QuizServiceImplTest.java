@@ -8,6 +8,7 @@ import com.dhaliwal.notemind.entity.User;
 import com.dhaliwal.notemind.exception.InvalidCredentialsException;
 import com.dhaliwal.notemind.exception.NoteNotFoundException;
 import com.dhaliwal.notemind.repository.NoteRepository;
+import com.dhaliwal.notemind.repository.QuizRepository;
 import com.dhaliwal.notemind.security.CurrentUserProvider;
 import com.dhaliwal.notemind.service.AIService;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,9 @@ class QuizServiceImplTest {
 
     @Mock
     private NoteRepository noteRepository;
+
+    @Mock
+    private QuizRepository quizRepository;
 
     @Mock
     private CurrentUserProvider currentUserProvider;
@@ -68,6 +72,7 @@ class QuizServiceImplTest {
         assertEquals("What is Java?", result.getFirst().getQuestion());
         assertEquals("Language", result.getFirst().getCorrectAnswer());
         verify(aiService).getAIQuizResponse("Java", "Java content", null, 3);
+        verify(quizRepository).save(any());
     }
 
     @Test

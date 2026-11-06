@@ -13,6 +13,8 @@ import java.util.List;
 
 @Repository
 public interface NoteRepository extends JpaRepository<Note, Long> {
+    long countByUserId(Long userId);
+
     @Query("SELECT n FROM Note n JOIN FETCH n.user u WHERE u.id = :id")
     List<Note> findAllByUserId(@Param("id") Long id);
 

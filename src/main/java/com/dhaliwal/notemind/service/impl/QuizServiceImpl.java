@@ -4,10 +4,12 @@ import com.dhaliwal.notemind.dto.quiz.ai.AIQuizResponse;
 import com.dhaliwal.notemind.dto.quiz.ai.QuizQuestion;
 import com.dhaliwal.notemind.dto.quiz.response.QuizQuestionDto;
 import com.dhaliwal.notemind.entity.Note;
+import com.dhaliwal.notemind.entity.Quiz;
 import com.dhaliwal.notemind.entity.User;
 import com.dhaliwal.notemind.exception.InvalidCredentialsException;
 import com.dhaliwal.notemind.exception.NoteNotFoundException;
 import com.dhaliwal.notemind.repository.NoteRepository;
+import com.dhaliwal.notemind.repository.QuizRepository;
 import com.dhaliwal.notemind.security.CurrentUserProvider;
 import com.dhaliwal.notemind.service.AIService;
 import com.dhaliwal.notemind.service.QuizService;
@@ -21,6 +23,7 @@ import java.util.List;
 public class QuizServiceImpl implements QuizService {
 
     private final NoteRepository noteRepository;
+    private final QuizRepository quizRepository;
     private final CurrentUserProvider currentUserProvider;
     private final AIService aiService;
 
@@ -40,6 +43,12 @@ public class QuizServiceImpl implements QuizService {
                 note.getImageUrl(),
                 count
         );
+
+        quizRepository.save(Quiz.builder()
+                .user(user)
+                .note(note)
+                .questionCount(response.getQuestions().size())
+                .build());
 
         return response.getQuestions().stream()
                 .map(this::toDto)

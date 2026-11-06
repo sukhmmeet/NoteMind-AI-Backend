@@ -1,456 +1,461 @@
-# API Reference
+# NoteMind API Reference
 
-> All endpoints (except `/auth/**`) require a valid JWT in the `Authorization: Bearer <token>` header.
+This document describes the REST endpoints currently exposed by the controllers in
+`src/main/java/com/dhaliwal/notemind/controller`.
 
-## Table of Contents
-- [Authentication](#authentication-endpoints)
-- [Notes](#notes-endpoints)
-- [Flashcards](#flashcard-endpoints)
-- [Quizzes](#quiz-endpoints)
-- [Folders](#folder-endpoints)
+## Base URL and authentication
 
----
+The application context path is `/api/v1`. For a local server, use:
 
-## Authentication Endpoints
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/auth/signup` | Register a new user |
-| `POST` | `/auth/login` | Login and receive JWT + refresh token |
-| `POST` | `/auth/refresh-token` | Get a new JWT using a refresh token |
-| `POST` | `/auth/logout` | Revoke the refresh token |
-
-### POST /auth/signup
-
-Register a new user
-
-```bash
-curl -X POST http://localhost:8080/api/v1/auth/signup \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "john_doe",
-    "password": "securePass123"
-  }'
+```text
+http://localhost:8080/api/v1
 ```
 
-**Response (200):**
+All endpoints under `/auth/**` are public. Every other endpoint requires:
+
+```http
+Authorization: Bearer <jwtToken>
+```
+
+Successful responses use this wrapper:
+
 ```json
 {
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refreshToken": "550e8400-e29b-41d4-a716-446655440000",
-  "expiresIn": 3600
+  "success": true,
+  "message": "Success",
+  "data": {},
+  "timestamp": "2026-01-01T12:00:00Z"
 }
 ```
 
-### POST /auth/login
+For message-only operations, `data` is omitted. Error responses use the same
+wrapper with `success: false` and an error `message`.
 
-Login with credentials
+## Endpoint summary
 
-```bash
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "john_doe",
-    "password": "securePass123"
-  }'
-```
+| Method | Path | Auth | Status | Description |
+|---|---|---:|---:|---|
+| POST | `/auth/signup` | No | 200 | Create a user |
+| POST | `/auth/login` | No | 200 | Authenticate a user |
+| POST | `/auth/refresh-token` | No | 200 | Exchange a refresh token |
+| POST | `/auth/logout` | No | 200 | Revoke a refresh token |
+| POST | `/notes` | Yes | 200 | Create a note |
+| GET | `/notes` | Yes | 200 | List notes with pagination |
+| GET | `/notes/{id}` | Yes | 200 | Get one note |
+| PUT | `/notes/{id}` | Yes | 200 | Update a note |
+| DELETE | `/notes/{id}` | Yes | 200 | Delete a note |
+| GET | `/notes/search` | Yes | 200 | Search the current user's notes |
+| GET | `/notes/refresh-summary/{id}` | Yes | 200 | Regenerate a note summary |
+| POST | `/notes/{noteId}/flashcards/generate` | Yes | 201 | Generate flashcards with AI |
+| POST | `/notes/{noteId}/flashcards/regenerate` | Yes | 200 | Replace flashcards with a new AI set |
+| GET | `/notes/{noteId}/flashcards` | Yes | 200 | List a note's flashcards |
+| POST | `/notes/{noteId}/flashcards` | Yes | 201 | Create one flashcard |
+| DELETE | `/notes/{noteId}/flashcards` | Yes | 200 | Delete all flashcards for a note |
+| GET | `/flashcards/{flashCardId}` | Yes | 200 | Get one flashcard |
+| PATCH | `/flashcards/{flashCardId}` | Yes | 200 | Update one flashcard |
+| DELETE | `/flashcards/{flashCardId}` | Yes | 200 | Delete one flashcard |
+| POST | `/notes/{noteId}/quiz/generate` | Yes | 201 | Generate quiz questions with AI |
+| POST | `/folder` | Yes | 200 | Create a folder |
+| GET | `/folder` | Yes | 200 | List folders |
+| GET | `/folder/{id}` | Yes | 200 | Get one folder |
+| PATCH | `/folder/{id}` | Yes | 200 | Update a folder |
+| DELETE | `/folder/{id}` | Yes | 200 | Delete a folder |
 
-**Response (200):**
+## Common data models
+
+### `AuthRequestDto`
+
 ```json
 {
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refreshToken": "550e8400-e29b-41d4-a716-446655440000",
-  "expiresIn": 3600
+  "username": "john_doe",
+  "password": "securePass123"
 }
 ```
 
-### POST /auth/refresh-token
+### `AuthResponseDto`
 
-Get a new access token
-
-```bash
-curl -X POST http://localhost:8080/api/v1/auth/refresh-token \
-  -H "Content-Type: application/json" \
-  -d '{
-    "refreshToken": "550e8400-e29b-41d4-a716-446655440000"
-  }'
-```
-
-**Response (200):**
 ```json
 {
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "expiresIn": 3600
+  "username": "john_doe",
+  "userId": 1,
+  "jwtToken": "<access-token>",
+  "refreshToken": "<refresh-token>"
 }
 ```
 
-### POST /auth/logout
+### `RefreshRequestDto` and `RefreshResponseDto`
 
-Revoke refresh token
-
-```bash
-curl -X POST http://localhost:8080/api/v1/auth/logout \
-  -H "Authorization: Bearer <your-jwt-token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "refreshToken": "550e8400-e29b-41d4-a716-446655440000"
-  }'
-```
-
-**Response (200):**
 ```json
-{ "message": "Logged out successfully" }
+{ "refreshToken": "<refresh-token>" }
 ```
 
----
-
-## Notes Endpoints
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/notes` | Create a note (multipart: `note` JSON + optional `image`) |
-| `GET` | `/notes` | Get all notes (paginated) |
-| `GET` | `/notes/{id}` | Get a specific note by ID |
-| `PUT` | `/notes/{id}` | Update a note (multipart) |
-| `DELETE` | `/notes/{id}` | Delete a note |
-| `GET` | `/notes/search?query=...` | Full-text search |
-| `GET` | `/notes/refresh-summary/{id}?type=SHORT` | Regenerate AI summary |
-
-### POST /notes
-
-Create a new note with AI-generated summary
-
-**Basic note (without image):**
-```bash
-curl -X POST http://localhost:8080/api/v1/notes \
-  -H "Authorization: Bearer <your-jwt-token>" \
-  -F 'note={"title":"Quantum Computing","content":"Quantum computers use qubits...","summaryType":"DETAILED"};type=application/json'
+```json
+{
+  "refreshToken": "<refresh-token>",
+  "jwtToken": "<access-token>"
+}
 ```
 
-**With image:**
-```bash
-curl -X POST http://localhost:8080/api/v1/notes \
-  -H "Authorization: Bearer <your-jwt-token>" \
-  -F 'note={"title":"Architecture Diagram","content":"Microservices architecture...","summaryType":"BULLET_POINTS"};type=application/json' \
-  -F 'image=@diagram.png'
-```
+### `NoteDto`
 
-**Response (201):**
 ```json
 {
   "id": 1,
   "title": "Quantum Computing",
-  "content": "Quantum computers use qubits instead of bits...",
-  "summary": "Quantum computing is a revolutionary computing paradigm...",
+  "content": "Quantum computers use qubits...",
+  "summary": "A generated summary...",
   "summaryType": "DETAILED",
+  "imageUrl": "https://...",
+  "createdAt": "2026-01-01T12:00:00",
+  "updatedAt": "2026-01-01T12:00:00",
   "tags": [
-    { "id": 1, "name": "quantum-computing" },
-    { "id": 2, "name": "technology" }
+    { "id": 1, "name": "technology" }
   ],
-  "imageUrl": null,
-  "createdAt": "2024-01-15T10:30:00Z",
-  "updatedAt": "2024-01-15T10:30:00Z"
+  "folderId": 2
 }
 ```
 
-### GET /notes
+`summaryType` is one of `SHORT`, `DETAILED`, or `BULLET_POINTS`.
 
-Retrieve all notes (paginated)
+### `FlashCardDto`
 
-- `page`: zero-based page number; defaults to `0`
-- `size`: number of notes per page; defaults to `10`
-- `sort`: optional Spring Data sort expression, for example `createdAt,desc`
-
-```bash
-curl -X GET "http://localhost:8080/api/v1/notes?page=0&size=10&sort=createdAt,desc" \
-  -H "Authorization: Bearer <your-jwt-token>"
-```
-
-**Response (200):**
-```json
-{
-  "content": [
-    {
-      "id": 1,
-      "title": "Quantum Computing",
-      "summary": "...",
-      "tags": [...],
-      "createdAt": "2024-01-15T10:30:00Z"
-    }
-  ],
-  "pageable": {
-    "pageNumber": 0,
-    "pageSize": 10,
-    "totalElements": 42,
-    "totalPages": 5
-  }
-}
-```
-
-### GET /notes/{id}
-
-Retrieve a specific note
-
-```bash
-curl -X GET http://localhost:8080/api/v1/notes/1 \
-  -H "Authorization: Bearer <your-jwt-token>"
-```
-
-**Response (200):**
 ```json
 {
   "id": 1,
-  "title": "Quantum Computing",
-  "content": "...",
-  "summary": "...",
-  "tags": [...],
-  "createdAt": "2024-01-15T10:30:00Z"
-}
-```
-
-### PUT /notes/{id}
-
-Update a note
-
-```bash
-curl -X PUT http://localhost:8080/api/v1/notes/1 \
-  -H "Authorization: Bearer <your-jwt-token>" \
-  -F 'note={"title":"Updated Title","content":"Updated content...","summaryType":"SHORT"};type=application/json' \
-  -F 'image=@new-image.jpg'
-```
-
-**Response (200):** Updated note with regenerated summary and tags
-
-### GET /notes/search?query=...
-
-Full-text search across notes
-
-```bash
-curl -X GET "http://localhost:8080/api/v1/notes/search?query=quantum&limit=20" \
-  -H "Authorization: Bearer <your-jwt-token>"
-```
-
-**Response (200):**
-```json
-{
-  "results": [
-    {
-      "id": 1,
-      "title": "Quantum Computing",
-      "summary": "...",
-      "relevanceScore": 0.95
-    }
-  ],
-  "totalResults": 5
-}
-```
-
-### GET /notes/refresh-summary/{id}?type=...
-
-Regenerate AI summary (types: `SHORT`, `DETAILED`, `BULLET_POINTS`)
-
-```bash
-curl -X GET "http://localhost:8080/api/v1/notes/1/refresh-summary?type=BULLET_POINTS" \
-  -H "Authorization: Bearer <your-jwt-token>"
-```
-
-**Response (200):**
-```json
-{
-  "id": 1,
-  "summary": "• Point 1\n• Point 2\n• Point 3",
-  "summaryType": "BULLET_POINTS"
-}
-```
-
-### DELETE /notes/{id}
-
-Delete a note
-
-```bash
-curl -X DELETE http://localhost:8080/api/v1/notes/1 \
-  -H "Authorization: Bearer <your-jwt-token>"
-```
-
-**Response (204):** No Content
-
----
-
-## Flashcard Endpoints
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/notes/{noteId}/flashcards/generate?count=5` | AI-generate flashcards |
-| `POST` | `/notes/{noteId}/flashcards/regenerate?count=5` | Regenerate flashcards |
-| `GET` | `/notes/{noteId}/flashcards` | Get all flashcards for note |
-| `GET` | `/flashcards/{flashCardId}` | Get specific flashcard |
-| `POST` | `/notes/{noteId}/flashcards` | Manually create flashcard |
-| `PATCH` | `/flashcards/{flashCardId}` | Update a flashcard |
-| `DELETE` | `/flashcards/{flashCardId}` | Delete a flashcard |
-| `DELETE` | `/notes/{noteId}/flashcards` | Delete all flashcards |
-
-### POST /notes/{noteId}/flashcards/generate?count=5
-
-Generate flashcards from a note
-
-```bash
-curl -X POST "http://localhost:8080/api/v1/notes/1/flashcards/generate?count=5" \
-  -H "Authorization: Bearer <your-jwt-token>"
-```
-
-**Response (201):**
-```json
-{
+  "question": "What is a qubit?",
+  "answer": "The basic unit of quantum information.",
   "noteId": 1,
-  "flashcards": [
-    {
-      "id": 1,
-      "question": "What is a qubit?",
-      "answer": "A qubit is the fundamental unit of quantum computing...",
-      "createdAt": "2024-01-15T10:35:00Z"
-    }
-  ],
-  "totalGenerated": 5
+  "createdAt": "2026-01-01T12:00:00"
 }
 ```
 
-### GET /notes/{noteId}/flashcards
+Flashcard request bodies contain `question` and `answer`.
 
-List all flashcards for a note
+### `FolderDtoWithoutNotes` and `FolderDto`
 
-```bash
-curl -X GET http://localhost:8080/api/v1/notes/1/flashcards \
-  -H "Authorization: Bearer <your-jwt-token>"
-```
-
-**Response (200):**
 ```json
-{
-  "flashcards": [...],
-  "totalCount": 5
-}
+{ "id": 1, "name": "Study Notes" }
 ```
 
-### PATCH /flashcards/{flashCardId}
+When `includeNotes=true`, folders are returned with a `notes` array containing
+`NoteDto` objects:
 
-Update a flashcard
-
-```bash
-curl -X PATCH http://localhost:8080/api/v1/flashcards/1 \
-  -H "Authorization: Bearer <your-jwt-token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "question": "What is a quantum bit?",
-    "answer": "Updated answer..."
-  }'
-```
-
-**Response (200):** Updated flashcard
-
----
-
-## Quiz Endpoints
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/notes/{noteId}/quiz/generate?count=5` | Generate an AI multiple-choice quiz |
-
-### POST /notes/{noteId}/quiz/generate?count=5
-
-Generate between 1 and 20 multiple-choice questions from a note. The response includes four options, the correct answer, and an explanation for each question.
-
-```bash
-curl -X POST "http://localhost:8080/api/v1/notes/1/quiz/generate?count=5" \
-  -H "Authorization: Bearer <your-jwt-token>"
-```
-
-**Response (201):**
-```json
-{
-  "questions": [
-    {
-      "question": "What is a qubit?",
-      "options": ["A data type", "A quantum bit", "A database", "A protocol"],
-      "correctAnswer": "A quantum bit",
-      "explanation": "A qubit is the basic unit of quantum information."
-    }
-  ]
-}
-```
-
-## Folder Endpoints
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/folder` | Create a folder |
-| `GET` | `/folder` | Get all folders |
-| `GET` | `/folder/{id}` | Get folder by ID |
-| `PATCH` | `/folder/{id}` | Rename a folder |
-| `DELETE` | `/folder/{id}` | Delete a folder |
-
-### POST /folder
-
-Create a new folder
-
-```bash
-curl -X POST http://localhost:8080/api/v1/folder \
-  -H "Authorization: Bearer <your-jwt-token>" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Study Notes"}'
-```
-
-**Response (201):**
 ```json
 {
   "id": 1,
   "name": "Study Notes",
-  "createdAt": "2024-01-15T10:40:00Z"
+  "notes": []
 }
 ```
 
-### GET /folder?includeNotes=true
+### `QuizQuestionDto`
 
-Get all folders with nested notes
-
-```bash
-curl -X GET "http://localhost:8080/api/v1/folder?includeNotes=true" \
-  -H "Authorization: Bearer <your-jwt-token>"
-```
-
-**Response (200):**
 ```json
 {
-  "folders": [
-    {
-      "id": 1,
-      "name": "Study Notes",
-      "notes": [{"id": 1, "title": "Quantum Computing"}],
-      "noteCount": 1
-    }
-  ]
+  "question": "What is a qubit?",
+  "options": ["A data type", "A quantum bit", "A database", "A protocol"],
+  "correctAnswer": "A quantum bit",
+  "explanation": "A qubit is the basic unit of quantum information."
 }
 ```
 
-### PATCH /folder/{id}
+## Authentication
 
-Rename a folder
+### `POST /auth/signup`
+
+Creates a new user.
 
 ```bash
-curl -X PATCH http://localhost:8080/api/v1/folder/1 \
-  -H "Authorization: Bearer <your-jwt-token>" \
+curl -X POST "$BASE_URL/auth/signup" \
   -H "Content-Type: application/json" \
-  -d '{"name": "Advanced Study Notes"}'
+  -d '{"username":"john_doe","password":"securePass123"}'
 ```
 
-**Response (200):** Updated folder
+Returns an `AuthResponseDto` inside `data`.
 
-### DELETE /folder/{id}
+### `POST /auth/login`
 
-Delete a folder
+Authenticates an existing user.
 
 ```bash
-curl -X DELETE http://localhost:8080/api/v1/folder/1 \
-  -H "Authorization: Bearer <your-jwt-token>"
+curl -X POST "$BASE_URL/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"john_doe","password":"securePass123"}'
 ```
 
-**Response (204):** No Content
+Returns an `AuthResponseDto` inside `data`.
+
+### `POST /auth/refresh-token`
+
+Creates a new access token from a refresh token.
+
+```bash
+curl -X POST "$BASE_URL/auth/refresh-token" \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken":"<refresh-token>"}'
+```
+
+Returns a `RefreshResponseDto` inside `data`.
+
+### `POST /auth/logout`
+
+Revokes the supplied refresh token.
+
+```bash
+curl -X POST "$BASE_URL/auth/logout" \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken":"<refresh-token>"}'
+```
+
+Returns a message-only success response.
+
+## Notes
+
+### `POST /notes`
+
+Creates a note using `multipart/form-data`.
+
+Parts:
+
+| Part | Required | Type | Description |
+|---|---:|---|---|
+| `note` | Yes | JSON string | A `NoteDto` request; normally includes `title`, `content`, `summaryType`, and optionally `folderId` |
+| `image` | No | File | Optional image attachment |
+
+```bash
+curl -X POST "$BASE_URL/notes" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
+  -F 'note={"title":"Quantum Computing","content":"Quantum computers use qubits","summaryType":"DETAILED","folderId":2};type=application/json' \
+  -F 'image=@diagram.png'
+```
+
+Returns the created `NoteDto` inside `data`.
+
+### `GET /notes`
+
+Lists notes belonging to the authenticated user.
+
+Query parameters are Spring Data pagination parameters:
+
+| Parameter | Default | Description |
+|---|---:|---|
+| `page` | `0` | Zero-based page number |
+| `size` | `10` | Page size |
+| `sort` | `createdAt` | Sort expression, for example `createdAt,desc` |
+
+```bash
+curl "$BASE_URL/notes?page=0&size=10&sort=createdAt,desc" \
+  -H "Authorization: Bearer $JWT_TOKEN"
+```
+
+Returns a Spring `Page<NoteDto>` inside `data`.
+
+### `GET /notes/{id}`
+
+Returns one note owned by the authenticated user.
+
+```bash
+curl "$BASE_URL/notes/1" \
+  -H "Authorization: Bearer $JWT_TOKEN"
+```
+
+### `PUT /notes/{id}`
+
+Updates a note using the same multipart format as note creation. The `note`
+part is required and the `image` part is optional.
+
+```bash
+curl -X PUT "$BASE_URL/notes/1" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
+  -F 'note={"title":"Updated title","content":"Updated content","summaryType":"SHORT"};type=application/json' \
+  -F 'image=@updated-image.jpg'
+```
+
+Returns the updated `NoteDto` inside `data`.
+
+### `DELETE /notes/{id}`
+
+Deletes a note and returns a message-only success response.
+
+### `GET /notes/search`
+
+Searches the authenticated user's notes.
+
+| Query parameter | Required | Description |
+|---|---:|---|
+| `query` | Yes | Search term |
+
+```bash
+curl "$BASE_URL/notes/search?query=quantum" \
+  -H "Authorization: Bearer $JWT_TOKEN"
+```
+
+Returns a JSON array of `NoteDto` objects inside `data`.
+
+### `GET /notes/refresh-summary/{id}`
+
+Regenerates a note's summary.
+
+| Query parameter | Required | Values |
+|---|---:|---|
+| `type` | Yes | `SHORT`, `DETAILED`, `BULLET_POINTS` |
+
+```bash
+curl "$BASE_URL/notes/refresh-summary/1?type=BULLET_POINTS" \
+  -H "Authorization: Bearer $JWT_TOKEN"
+```
+
+Returns the updated `NoteDto` inside `data`.
+
+## Flashcards
+
+### `POST /notes/{noteId}/flashcards/generate`
+
+Generates AI flashcards for a note.
+
+| Query parameter | Default | Constraints |
+|---|---:|---|
+| `count` | `5` | Integer from `1` to `50` |
+
+Returns an array of `FlashCardDto` objects.
+
+### `POST /notes/{noteId}/flashcards/regenerate`
+
+Regenerates the note's flashcards. It accepts the same `count` parameter
+(default `5`, minimum `1`, maximum `50`) and returns a new array of
+`FlashCardDto` objects.
+
+### `GET /notes/{noteId}/flashcards`
+
+Returns all `FlashCardDto` objects for a note.
+
+### `POST /notes/{noteId}/flashcards`
+
+Creates one manual flashcard.
+
+```bash
+curl -X POST "$BASE_URL/notes/1/flashcards" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"question":"What is a qubit?","answer":"The basic unit of quantum information."}'
+```
+
+Returns the created `FlashCardDto`.
+
+### `DELETE /notes/{noteId}/flashcards`
+
+Deletes all flashcards belonging to a note. Returns a message-only success
+response.
+
+### `GET /flashcards/{flashCardId}`
+
+Returns one `FlashCardDto`.
+
+### `PATCH /flashcards/{flashCardId}`
+
+Updates a flashcard. The request body contains `question` and `answer`.
+
+```bash
+curl -X PATCH "$BASE_URL/flashcards/1" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"question":"Updated question","answer":"Updated answer"}'
+```
+
+### `DELETE /flashcards/{flashCardId}`
+
+Deletes one flashcard and returns a message-only success response.
+
+## Quizzes
+
+### `POST /notes/{noteId}/quiz/generate`
+
+Generates AI quiz questions for a note.
+
+| Query parameter | Default | Constraints |
+|---|---:|---|
+| `count` | `5` | Integer from `1` to `20` |
+
+```bash
+curl -X POST "$BASE_URL/notes/1/quiz/generate?count=5" \
+  -H "Authorization: Bearer $JWT_TOKEN"
+```
+
+Returns an array of `QuizQuestionDto` objects.
+
+## Folders
+
+### `POST /folder`
+
+Creates a folder.
+
+```bash
+curl -X POST "$BASE_URL/folder" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Study Notes"}'
+```
+
+Returns a `FolderDtoWithoutNotes`.
+
+### `GET /folder`
+
+Lists folders for the authenticated user.
+
+| Query parameter | Default | Description |
+|---|---:|---|
+| `includeNotes` | `false` | Set to `true` to include nested notes |
+
+Without `includeNotes=true`, returns an array of `FolderDtoWithoutNotes`.
+With it, returns an array of `FolderDto`.
+
+### `GET /folder/{id}`
+
+Returns one `FolderDtoWithoutNotes`.
+
+### `PATCH /folder/{id}`
+
+Updates a folder name.
+
+```bash
+curl -X PATCH "$BASE_URL/folder/1" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Exam Notes"}'
+```
+
+Returns the updated `FolderDtoWithoutNotes`.
+
+### `DELETE /folder/{id}`
+
+Deletes a folder and returns a message-only success response.
+
+## Error responses
+
+Errors use the standard wrapper:
+
+```json
+{
+  "success": false,
+  "message": "Note not found",
+  "timestamp": "2026-01-01T12:00:00Z"
+}
+```
+
+The global exception handler currently maps errors as follows:
+
+| Status | Examples |
+|---:|---|
+| 400 | Invalid note/folder data, empty search term |
+| 401 | Invalid credentials, invalid or expired refresh token, unauthenticated request |
+| 404 | User, note, folder, or flashcard not found |
+| 409 | Duplicate username or folder |
+| 413 | Multipart request exceeds the configured 10 MB limit |
+| 502 | AI provider failure |
+| 500 | Image upload or unexpected server error |
+
+Define `BASE_URL` before using the examples:
+
+```bash
+export BASE_URL=http://localhost:8080/api/v1
+```

@@ -167,11 +167,12 @@ public class Util {
     }
 
     public String chooseModel(String imageUrl) {
-        if (imageUrl != null && !imageUrl.isEmpty()) {
-            return "nex-agi/nex-n2-pro:free";
-        } else {
-            return "nvidia/nemotron-3-super-120b-a12b:free";
-        }
+//        if (imageUrl != null && !imageUrl.isEmpty()) {
+//            return "stealth/crouton-alpha";
+//        } else {
+//            return "stealth/crouton-alpha";
+//        }
+        return "stealth/crouton-alpha";
     }
     public Map<String, Object> buildRequest(String prompt, String imageUrl) {
 

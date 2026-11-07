@@ -2,6 +2,7 @@ package com.dhaliwal.notemind.security.service;
 
 import com.dhaliwal.notemind.entity.RefreshToken;
 import com.dhaliwal.notemind.entity.User;
+import com.dhaliwal.notemind.exception.UsernameAlreadyExistsException;
 import com.dhaliwal.notemind.security.refresh.RefreshTokenRepository;
 import com.dhaliwal.notemind.security.util.AuthUtil;
 import com.dhaliwal.notemind.repository.UserRepository;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
+/** Creates users and issues access/refresh token pairs. */
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -29,10 +31,11 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
 
 
+    /** Registers a new user and returns the initial token pair. */
     public AuthResponseDto signup(AuthRequestDto authRequestDto) {
 
         if (userRepository.findByUsername(authRequestDto.getUsername()).isPresent()) {
-            throw new UsernameNotFoundException("Username already exists");
+            throw new UsernameAlreadyExistsException("Username already exists");
         }
 
         User user = new User();
@@ -62,6 +65,7 @@ public class AuthService {
     }
 
 
+    /** Verifies credentials and returns a newly issued token pair. */
     public AuthResponseDto login(AuthRequestDto authRequestDto) {
 
         Authentication authentication =

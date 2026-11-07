@@ -1,9 +1,11 @@
 package com.dhaliwal.notemind.security;
 
+import com.dhaliwal.notemind.dto.ApiResponse;
 import com.dhaliwal.notemind.entity.User;
 import com.dhaliwal.notemind.repository.UserRepository;
 import com.dhaliwal.notemind.security.AuthFilter.JwtAuthFilter;
 import com.dhaliwal.notemind.security.util.AuthUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,7 +18,6 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import java.util.Optional;
 
@@ -31,6 +32,9 @@ class JwtAuthFilterTest {
 
     @Mock
     private AuthUtil authUtil;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     @Mock
     private FilterChain filterChain;
@@ -107,7 +111,7 @@ class JwtAuthFilterTest {
     }
 
     @Test
-    void shouldThrowExceptionWhenUserDoesNotExist() {
+    void shouldReturnUnauthorizedWhenUserDoesNotExist() throws Exception {
 
         request.addHeader("Authorization", "Bearer token123");
 
@@ -117,12 +121,16 @@ class JwtAuthFilterTest {
         when(userRepository.findByUsername("john"))
                 .thenReturn(Optional.empty());
 
-        assertThrows(
-                UsernameNotFoundException.class,
-                () -> jwtAuthFilter.doFilter(request, response, filterChain)
-        );
+        request.removeHeader("Authorization");
+        request.addHeader("Authorization", "Bearer token123");
+        request.removeHeader("Authorization");
+        request.addHeader("Authorization", "Bearer token123");
+        jwtAuthFilter.doFilter(request, response, filterChain);
 
+        assertEquals(401, response.getStatus());
+        verify(objectMapper).writeValue(any(java.io.Writer.class), any(ApiResponse.class));
         verify(userRepository).findByUsername("john");
+        verifyNoInteractions(filterChain);
     }
 
     @Test

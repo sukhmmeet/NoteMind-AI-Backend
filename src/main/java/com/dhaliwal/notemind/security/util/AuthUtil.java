@@ -17,6 +17,7 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.HexFormat;
 
+/** Generates, parses, and hashes authentication tokens. */
 @Component
 @Slf4j
 public class AuthUtil {
@@ -27,6 +28,7 @@ public class AuthUtil {
         return Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
+    /** Creates a signed access token containing the user's identity and ID. */
     public String generateAccessToken(User user){
         return Jwts.builder()
                 .subject(user.getUsername())
@@ -36,6 +38,7 @@ public class AuthUtil {
                 .signWith(getSecretKey())
                 .compact();
     }
+    /** Extracts the username from a signed and unexpired access token. */
     public String getUsernameFromToken(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(getSecretKey())
@@ -44,6 +47,7 @@ public class AuthUtil {
                 .getPayload();
         return claims.getSubject();
     }
+    /** Returns whether the token can be parsed and verified with the configured key. */
     public boolean isTokenValid(String token) {
         try {
             Jwts.parser()
@@ -56,6 +60,7 @@ public class AuthUtil {
             return false;
         }
     }
+    /** Creates a cryptographically random opaque refresh token. */
     public String generateRefreshToken() {
         SecureRandom random = new SecureRandom();
 
@@ -66,6 +71,7 @@ public class AuthUtil {
                 .withoutPadding()
                 .encodeToString(bytes);
     }
+    /** Hashes a refresh token before it is persisted. */
     public String hashToken(String token) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");

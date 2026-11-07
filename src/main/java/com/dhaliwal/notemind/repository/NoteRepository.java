@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,9 +16,11 @@ import java.util.List;
 public interface NoteRepository extends JpaRepository<Note, Long> {
     long countByUserId(Long userId);
 
+    @EntityGraph(attributePaths = {"tags", "folder"})
     @Query("SELECT n FROM Note n JOIN FETCH n.user u WHERE u.id = :id")
     List<Note> findAllByUserId(@Param("id") Long id);
 
+        @EntityGraph(attributePaths = {"tags", "folder"})
         @Query(value = "SELECT n FROM Note n JOIN FETCH n.user u WHERE u.id = :id",
             countQuery = "SELECT COUNT(n) FROM Note n WHERE n.user.id = :id")
         Page<Note> findAllByUserId(@Param("id") Long id, Pageable pageable);

@@ -16,6 +16,10 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(indexes = {
+        @Index(name = "idx_note_user_updated", columnList = "user_id, updatedAt"),
+        @Index(name = "idx_note_folder", columnList = "folder_id")
+})
 public class Note {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

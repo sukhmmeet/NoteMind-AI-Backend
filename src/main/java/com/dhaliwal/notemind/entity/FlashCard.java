@@ -12,6 +12,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(indexes = {
+        @Index(name = "idx_flashcard_note", columnList = "note_id")
+})
 public class FlashCard {
 
     @Id

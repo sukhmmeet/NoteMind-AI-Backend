@@ -11,6 +11,9 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(indexes = {
+        @Index(name = "idx_refresh_token_revoked", columnList = "token, revoked")
+})
 public class RefreshToken {
 
     @Id
